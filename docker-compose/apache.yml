@@ -1,17 +1,17 @@
 version: '3'
 services:
-  faveo-nginx:
-    image: tamilselvanlws/faveo-nginx-php8.2:v1
-    container_name: ${DOMAINNAME}-nginx
+  faveo-apache:
+    image: tamilselvanlws/faveo-apache-php8.2:v1
+    container_name: ${DOMAINNAME}-apache
     networks:
       faveo-network:
-        ipv4_address: 172.24.2.1
+        ipv4_address: 172.24.2.11
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/default:/etc/nginx/sites-available/default
-      - ./${HOST_ROOT_DIR}:/var/www/html
+      - ./apache/000-default.conf:/etc/apache2/sites-available/000-default.conf
+      - ./${HOST_ROOT_DIR}:/var/www/html/
       - ${CUR_DIR}/certbot/letsencrypt/etc/letsencrypt/live/${DOMAINNAME}/cert.pem:/var/imported/ssl/cert.pem
       - ${CUR_DIR}/certbot/letsencrypt/etc/letsencrypt/live/${DOMAINNAME}/privkey.pem:/var/imported/ssl/privkey.pem
       - ${CUR_DIR}/certbot/letsencrypt/etc/letsencrypt/live/${DOMAINNAME}/fullchain.pem:/var/imported/ssl/fullchain.pem
@@ -29,7 +29,7 @@ services:
       - db-volume:/var/lib/mysql
     networks:
       faveo-network:
-        ipv4_address: 172.24.2.2
+        ipv4_address: 172.24.2.12
     restart: on-failure
 
   faveo-redis:
@@ -39,25 +39,26 @@ services:
       - "6379:6379"
     networks:
       faveo-network:
-        ipv4_address: 172.24.2.3
+        ipv4_address: 172.24.2.13
     restart: always
 
   faveo-supervisor:
     image: tamilselvanlws/faveo-supervisor-php8.2:v1
     container_name: ${DOMAINNAME}-supervisor
     volumes:
+      - ./conf/supervisor/faveo-worker.conf:/etc/supervisor/conf.d/faveo-worker.conf
       - ./${HOST_ROOT_DIR}/:/var/www/html/
     ports:
         - "9001:9001"
     depends_on:
-      - faveo-nginx
+      - faveo-apache
       - faveo-mariadb
       - faveo-redis
       - faveo-meilisearch
       - faveo-memcached
     networks:
       faveo-network:
-        ipv4_address: 172.24.2.4
+        ipv4_address: 172.24.2.14
     restart: on-failure
 
   faveo-meilisearch:
@@ -72,7 +73,7 @@ services:
       - MEILI_MASTER_KEY=${MASTER_KEY}
     networks:
       faveo-network:
-        ipv4_address: 172.24.2.5
+        ipv4_address: 172.24.2.15
     restart: always
 
   faveo-memcached:
@@ -82,7 +83,7 @@ services:
       - "11211:11211"
     networks:
       faveo-network:
-        ipv4_address: 172.24.2.6
+        ipv4_address: 172.24.2.16
     restart: always
 
 volumes:

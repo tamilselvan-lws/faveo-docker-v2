@@ -1,0 +1,68 @@
+# Redirect HTTP to HTTPS
+server {
+    listen 80;
+    server_name example.com;
+    return 301 https://$host$request_uri;
+}
+
+# Main server block for HTTPS
+server {
+    listen 443 ssl http2;
+    server_name example.com;
+
+    root /var/www/html/public;
+    index index.php index.html index.htm;
+
+    ssl_certificate /var/imported/ssl/fullchain.pem;
+    ssl_certificate_key /var/imported/ssl/privkey.pem;
+
+    # Disable SSL protocols
+    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+
+    # Optimize cipher suites
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers ECDH+AESGCM:ECDH+AES256:ECDH+AES128:DH+3DES:!ADH:!AECDH:!MD5;
+
+    # Enable HSTS
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
+    # SSL sessions
+    ssl_session_cache shared:SSL:40m;
+    ssl_session_timeout 4h;
+    ssl_session_tickets on;
+
+    client_max_body_size 100M;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock; # Ensure the socket path is correct
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+
+    # Security Headers
+    add_header Content-Security-Policy "frame-ancestors 'self'" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Permissions-Policy "geolocation=(self), microphone=()" always;
+    add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
+    add_header Expect-CT "max-age=86400, enforce" always;
+
+    # Security Configurations
+    add_header ETag "";
+    server_tokens off;
+
+    if ($request_method = TRACE) {
+        return 405;
+    }
+}
